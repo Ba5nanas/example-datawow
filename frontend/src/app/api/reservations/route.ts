@@ -9,8 +9,23 @@ export async function GET(request: NextRequest) {
     const page = searchParams.get('page') || '1';
     const limit = searchParams.get('limit') || '50';
 
+    const cookieStore = await cookies();
+
+    const jwtToken = cookieStore.get('jwt')?.value;
+
+    if (!jwtToken) {
+      return NextResponse.json(
+        { success: false, error: 'Not authenticated' },
+        { status: 401 }
+      );
+    }
+
     const response = await fetch(`${API_BASE_URL}/reservations?page=${page}&limit=${limit}`, {
       cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`,
+      },
     });
 
     if (!response.ok) {
@@ -46,6 +61,14 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+    const jwtToken = cookieStore.get('jwt')?.value;
+
+    if (!jwtToken) {
+      return NextResponse.json(
+        { success: false, error: 'Not authenticated' },
+        { status: 401 }
+      );
+    }
 
     const user = JSON.parse(userData);
 
@@ -59,6 +82,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`,
       },
       body: JSON.stringify(requestBody),
     });

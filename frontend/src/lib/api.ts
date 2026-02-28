@@ -3,11 +3,29 @@
 
 const API_BASE_URL = '/api';
 
+// Helper function to get JWT token from localStorage
+const getAuthToken = (): string | null => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('jwt');
+  }
+  return null;
+};
+
+// Helper function to create headers with auth token
+const createAuthHeaders = (headers: HeadersInit = {}): HeadersInit => {
+  const token = getAuthToken();
+  return {
+    ...headers,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+  };
+};
+
 export interface User {
   id: number;
   name: string;
   email: string;
-  password: string;
+  password?: string;
+  role?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,72 +65,148 @@ export interface DashboardStats {
 
 export const dashboardApi = {
   getStats: async (): Promise<DashboardStats> => {
-    const response = await fetch(`${API_BASE_URL}/dashboard/stats`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch stats');
+    try {
+      const headers = createAuthHeaders();
+      const response = await fetch(`${API_BASE_URL}/dashboard/stats`, {
+        headers,
+      });
+      if (!response.ok) {
+        console.log('Failed to fetch stats');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Dashboard API error:', error);
+      throw error;
     }
-    return await response.json();
   },
 };
 
 // User API
 export const userApi = {
   login: async (loginData: LoginUserDto): Promise<User> => {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(loginData),
-    });
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginData),
+      });
 
-    if (!response.ok) {
-      const error: ApiResponse<null> = await response.json();
-      throw new Error(error.message || 'Login failed');
+      if (!response.ok) {
+        const error: ApiResponse<null> = await response.json();
+        console.log(error.error || error.message || 'Login failed');
+      }
+
+      const data = await response.json();
+      
+      // Store token and user data in localStorage for client-side use
+      if (data.access_token) {
+        localStorage.setItem('jwt', data.access_token);
+      }
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+
+      return data.user || data;
+    } catch (error) {
+      console.error('Login API error:', error);
+      throw error;
     }
-
-    return await response.json();
   },
 
   register: async (userData: RegisterUserDto): Promise<User> => {
-    const response = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
 
-    if (!response.ok) {
-      const error: ApiResponse<null> = await response.json();
-      throw new Error(error.message || 'Registration failed');
+      if (!response.ok) {
+        const error: ApiResponse<null> = await response.json();
+        console.log(error.error || error.message || 'Registration failed');
+      }
+
+      const data = await response.json();
+      
+      // Store token and user data in localStorage for client-side use
+      if (data.access_token) {
+        localStorage.setItem('jwt', data.access_token);
+      }
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+
+      return data.user || data;
+    } catch (error) {
+      console.error('Register API error:', error);
+      throw error;
     }
+  },
 
-    return await response.json();
+  logout: async (): Promise<void> => {
+    try {
+      localStorage.removeItem('jwt');
+      localStorage.removeItem('user');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  },
+
+  getCurrentUser: (): User | null => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        return JSON.parse(userStr);
+      }
+      return null;
+    } catch (error) {
+      console.error('Get current user error:', error);
+      return null;
+    }
   },
 
   findByEmail: async (email: string): Promise<User | null> => {
-    const response = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(email)}`);
-    if (!response.ok) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(email)}`);
+      if (!response.ok) {
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Find by email error:', error);
       return null;
     }
-    return await response.json();
   },
 
   findAll: async (): Promise<User[]> => {
-    const response = await fetch(`${API_BASE_URL}/users`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch users');
+    try {
+      const response = await fetch(`${API_BASE_URL}/users`);
+      if (!response.ok) {
+        console.log('Failed to fetch users');
+        return [];
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Find all users error:', error);
+      throw error;
     }
-    return await response.json();
   },
 
   findById: async (id: number): Promise<User | null> => {
-    const response = await fetch(`${API_BASE_URL}/users/${id}`);
-    if (!response.ok) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${id}`);
+      if (!response.ok) {
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Find by id error:', error);
       return null;
     }
-    return await response.json();
   },
 };
 
@@ -127,61 +221,95 @@ export interface Concert {
 }
 
 export const concertApi = {
-  findAll: async (page: number = 1, limit: number = 10): Promise<PaginatedResponse<Concert>> => {
-    const response = await fetch(`${API_BASE_URL}/concerts?page=${page}&limit=${limit}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch concerts');
+  findAll: async (page: number = 1, limit: number = 10): Promise<PaginatedResponse<Concert> | null> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/concerts?page=${page}&limit=${limit}`);
+      if (!response.ok) {
+        console.log("Failed to fetch concerts")
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Find all concerts error:', error);
+      throw error;
     }
-    return await response.json();
   },
 
   findById: async (id: number): Promise<Concert | null> => {
-    const response = await fetch(`${API_BASE_URL}/concerts/${id}`);
-    if (!response.ok) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/concerts/${id}`);
+      if (!response.ok) {
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Find concert by id error:', error);
       return null;
     }
-    return await response.json();
   },
 
-  create: async (concertData: Partial<Concert>): Promise<Concert> => {
-    const response = await fetch(`${API_BASE_URL}/concerts`, {
-      method: 'POST',
-      headers: {
+  create: async (concertData: Partial<Concert>): Promise<Concert | null> => {
+    try {
+      const headers = createAuthHeaders({
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(concertData),
-    });
+      });
+      const response = await fetch(`${API_BASE_URL}/concerts`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(concertData),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to create concert');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log(errorData.message || 'Failed to create concert');
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Create concert error:', error);
+      throw error;
     }
-
-    return await response.json();
   },
 
-  update: async (id: number, concertData: Partial<Concert>): Promise<Concert> => {
-    const response = await fetch(`${API_BASE_URL}/concerts/${id}`, {
-      method: 'PATCH',
-      headers: {
+  update: async (id: number, concertData: Partial<Concert>): Promise<Concert | null> => {
+    try {
+      const headers = createAuthHeaders({
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(concertData),
-    });
+      });
+      const response = await fetch(`${API_BASE_URL}/concerts/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(concertData),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to update concert');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log(errorData.message || 'Failed to update concert');
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Update concert error:', error);
+      throw error;
     }
-
-    return await response.json();
   },
 
   delete: async (id: number): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/concerts/${id}`, {
-      method: 'DELETE',
-    });
+    try {
+      const headers = createAuthHeaders();
+      const response = await fetch(`${API_BASE_URL}/concerts/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to delete concert');
+      if (!response.ok) {
+        console.log('Failed to delete concert');
+      }
+    } catch (error) {
+      console.error('Delete concert error:', error);
+      throw error;
     }
   },
 };
@@ -206,73 +334,132 @@ export interface CreateReservationDto {
 }
 
 export const reservationApi = {
-  create: async (reservationData: CreateReservationDto): Promise<Reservation> => {
-    const response = await fetch(`${API_BASE_URL}/reservations`, {
-      method: 'POST',
-      headers: {
+  create: async (reservationData: CreateReservationDto): Promise<Reservation | null> => {
+    try {
+      const headers = createAuthHeaders({
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(reservationData),
-    });
+      });
+      const response = await fetch(`${API_BASE_URL}/reservations`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(reservationData),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to create reservation');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log(errorData.message || 'Failed to create reservation');
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Create reservation error:', error);
+      throw error;
     }
-
-    return await response.json();
   },
 
-  findAll: async (page: number = 1, limit: number = 50): Promise<PaginatedResponse<Reservation>> => {
-    const response = await fetch(`${API_BASE_URL}/reservations?page=${page}&limit=${limit}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch reservations');
+  findAll: async (page: number = 1, limit: number = 50): Promise<PaginatedResponse<Reservation> | null> => {
+    try {
+      const headers = createAuthHeaders();
+      const response = await fetch(`${API_BASE_URL}/reservations?page=${page}&limit=${limit}`, {
+        headers,
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log(errorData.message || 'Failed to fetch reservations');
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Find all reservations error:', error);
+      throw error;
     }
-    return await response.json();
   },
 
   findByUserId: async (userId: number): Promise<Reservation[]> => {
-    const response = await fetch(`${API_BASE_URL}/reservations/user/${userId}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch user reservations');
+    try {
+      const headers = createAuthHeaders();
+      
+      const response = await fetch(`${API_BASE_URL}/reservations/user/${userId}`, {
+        headers,
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log(errorData.message || 'Failed to fetch user reservations');
+        return [];
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Find reservations by user error:', error);
+      return [];
     }
-    return await response.json();
   },
 
   findByConcertId: async (concertId: number): Promise<Reservation[]> => {
-    const response = await fetch(`${API_BASE_URL}/reservations/concert/${concertId}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch concert reservations');
+    try {
+      const response = await fetch(`${API_BASE_URL}/reservations/concert/${concertId}`);
+      if (!response.ok) {
+        console.log('Failed to fetch concert reservations');
+        return [];
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Find reservations by concert error:', error);
+      return [];
     }
-    return await response.json();
   },
 
   findById: async (id: number): Promise<Reservation | null> => {
-    const response = await fetch(`${API_BASE_URL}/reservations/${id}`);
-    if (!response.ok) {
+    try {
+      const headers = createAuthHeaders();
+      const response = await fetch(`${API_BASE_URL}/reservations/${id}`, {
+        headers,
+      });
+      if (!response.ok) {
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Find reservation by id error:', error);
       return null;
     }
-    return await response.json();
   },
 
-  cancel: async (id: number, userId: number): Promise<Reservation> => {
-    const response = await fetch(`${API_BASE_URL}/reservations/${id}/cancel?userId=${userId}`, {
-      method: 'PATCH',
-    });
+  cancel: async (id: number, userId: number): Promise<Reservation | null> => {
+    try {
+      const headers = createAuthHeaders();
+      const response = await fetch(`${API_BASE_URL}/reservations/${id}/cancel?userId=${userId}`, {
+        method: 'PATCH',
+        headers,
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to cancel reservation');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log(errorData.message || 'Failed to cancel reservation');
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Cancel reservation error:', error);
+      throw error;
     }
-
-    return await response.json();
   },
 
   delete: async (id: number): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/reservations/${id}`, {
-      method: 'DELETE',
-    });
+    try {
+      const headers = createAuthHeaders();
+      const response = await fetch(`${API_BASE_URL}/reservations/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to delete reservation');
+      if (!response.ok) {
+        console.log('Failed to delete reservation');
+      }
+    } catch (error) {
+      console.error('Delete reservation error:', error);
+      throw error;
     }
   },
 };

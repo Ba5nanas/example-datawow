@@ -5,6 +5,7 @@ import { APP_PIPE } from '@nestjs/core';
 import { ConcertsModule } from './concerts/concerts.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
 import { Concert } from './concerts/entities/concert.entity';
 import { User } from './users/entities/user.entity';
 import { Reservation } from './reservations/entities/reservation.entity';
@@ -26,6 +27,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     ConcertsModule,
     ReservationsModule,
     UsersModule,
+    AuthModule,
     DashboardModule
   ],
   providers: [

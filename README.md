@@ -48,6 +48,7 @@ DATABASE_PASSWORD=concert_password
 DATABASE_NAME=concert_db
 
 # Server
+PORT=5001
 NODE_ENV=development
 ```
 

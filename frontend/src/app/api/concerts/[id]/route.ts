@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://concert-backend:3000';
 
@@ -7,11 +8,26 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+
+    const cookieStore = await cookies();
+    const jwtToken = cookieStore.get('jwt')?.value;
+        
+    if (!jwtToken) {
+      return NextResponse.json(
+        { success: false, error: 'Not authenticated' },
+        { status: 401 }
+      );
+    }
+
     // Await params in Next.js 15+
     const { id } = await params;
 
     const response = await fetch(`${API_BASE_URL}/concerts/${id}`, {
       cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`,
+      },
     });
 
     if (!response.ok) {
@@ -41,10 +57,21 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
+    const cookieStore = await cookies();
+    const jwtToken = cookieStore.get('jwt')?.value;
+        
+    if (!jwtToken) {
+      return NextResponse.json(
+        { success: false, error: 'Not authenticated' },
+        { status: 401 }
+      );
+    }
+
     const response = await fetch(`${API_BASE_URL}/concerts/${id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`,
       },
       body: JSON.stringify(body),
     });
@@ -76,8 +103,22 @@ export async function DELETE(
     // Await params in Next.js 15+
     const { id } = await params;
 
+    const cookieStore = await cookies();
+    const jwtToken = cookieStore.get('jwt')?.value;
+        
+    if (!jwtToken) {
+      return NextResponse.json(
+        { success: false, error: 'Not authenticated' },
+        { status: 401 }
+      );
+    }
+
     const response = await fetch(`${API_BASE_URL}/concerts/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`,
+      }
     });
 
     if (!response.ok) {

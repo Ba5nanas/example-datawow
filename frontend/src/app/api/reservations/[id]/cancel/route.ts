@@ -22,12 +22,25 @@ export async function PATCH(
       );
     }
 
+    const jwtToken = cookieStore.get('jwt')?.value;
+
+    if (!jwtToken) {
+      return NextResponse.json(
+        { success: false, error: 'Not authenticated' },
+        { status: 401 }
+      );
+    }
+
     const user = JSON.parse(userData);
 
     const response = await fetch(
       `${API_BASE_URL}/reservations/${id}/cancel?userId=${user.id}`,
       {
         method: 'PATCH',
+        headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`,
+      },
       }
     );
 

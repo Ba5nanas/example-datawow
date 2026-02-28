@@ -6,6 +6,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
+    cookieStore.delete('jwt');
     cookieStore.delete('authToken');
     cookieStore.delete('userData');
 

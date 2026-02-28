@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call backend API
-    const response = await fetch(`${API_BASE_URL}/users/login`, {
+    // Call backend API with new JWT endpoint
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -34,49 +34,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await response.json();
+    const data = await response.json();
 
-    console.log('Backend login response:', user);
+    console.log('Backend login response:', data);
 
-    // Set auth cookie
+    // Set JWT cookie (for middleware)
     const cookieStore = await cookies();
-    cookieStore.set('authToken', 'true', {
+    cookieStore.set('jwt', data.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24, // 24 hours
+      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
     });
 
-    // Store user data in cookie (without password)
+    // Store user data in cookie (for middleware)
     cookieStore.set('userData', JSON.stringify({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      role: data.user.role,
+      createdAt: data.user.createdAt,
+      updatedAt: data.user.updatedAt,
     }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24, // 24 hours
+      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
     });
 
-    const responseUser = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
-
-    console.log('Returning user to client:', responseUser);
-
-    return NextResponse.json({
+    // Create response with token for client-side localStorage
+    const nextResponse = NextResponse.json({
       success: true,
-      user: responseUser,
+      user: data.user,
+      access_token: data.access_token,
     });
+
+    console.log('Returning user to client:', data.user);
+
+    return nextResponse;
   } catch (error) {
     console.error('Login API error:', error);
     return NextResponse.json(

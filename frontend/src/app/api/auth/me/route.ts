@@ -5,20 +5,34 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get auth token from httpOnly cookie
+    // Get JWT token from httpOnly cookie
     const cookieStore = await cookies();
-    const authToken = cookieStore.get('authToken')?.value;
+    const jwtToken = cookieStore.get('jwt')?.value;
 
-    if (!authToken) {
+    if (!jwtToken) {
       return NextResponse.json(
         { success: false, error: 'Not authenticated' },
         { status: 401 }
       );
     }
 
-    // Call backend API to get current user
-    // Note: The backend should validate the token and return the user
-    // For now, we'll use the userData cookie as a fallback
+    // Validate JWT token with backend
+    const response = await fetch(`${API_BASE_URL}/auth/validate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+
+    // Get user data from cookie
     const userData = cookieStore.get('userData')?.value;
 
     if (!userData) {

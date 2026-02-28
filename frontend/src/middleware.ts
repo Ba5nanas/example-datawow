@@ -20,19 +20,38 @@ export function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
   
-  // Get authentication token from httpOnly cookie (server-side)
-  const token = request.cookies.get("authToken")?.value;
+  // Get JWT token from httpOnly cookie (server-side)
+  const jwtToken = request.cookies.get("jwt")?.value;
+  const authToken = request.cookies.get("authToken")?.value;
   
   // If trying to access protected route without authentication
-  if (isProtectedRoute && !token) {
+  if (isProtectedRoute && !jwtToken && !authToken) {
     // Redirect to login page with return URL
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
   
+  // If trying to access admin route, check for admin role
+  if (pathname.startsWith("/admin") && jwtToken) {
+    const userData = request.cookies.get("userData")?.value;
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        if (user.role !== "user") {
+          // Non-admin trying to access admin route, redirect to user page
+          return NextResponse.redirect(new URL("/user", request.url));
+        }
+      } catch (error) {
+        // Invalid user data, redirect to login
+        const loginUrl = new URL("/login", request.url);
+        return NextResponse.redirect(loginUrl);
+      }
+    }
+  }
+  
   // If trying to access public route while authenticated
-  if (isPublicRoute && token) {
+  if (isPublicRoute && (jwtToken || authToken)) {
     // Redirect to user page (not admin)
     return NextResponse.redirect(new URL("/user", request.url));
   }

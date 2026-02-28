@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call backend API
-    const response = await fetch(`${API_BASE_URL}/users/register`, {
+    // Call backend API with new JWT endpoint
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -36,41 +36,47 @@ export async function POST(request: NextRequest) {
 
     const user = await response.json();
 
-    // Set auth cookie
+    // Set JWT cookie (for middleware)
     const cookieStore = await cookies();
-    cookieStore.set('authToken', 'true', {
+    cookieStore.set('jwt', user.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24, // 24 hours
+      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
     });
 
-    // Store user data in cookie (without password)
+    // Store user data in cookie (for middleware)
     cookieStore.set('userData', JSON.stringify({
       id: user.id,
       name: user.name,
       email: user.email,
+      role: user.role,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24, // 24 hours
+      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
     });
 
-    return NextResponse.json({
+    // Create response with token for client-side localStorage
+    const nextResponse = NextResponse.json({
       success: true,
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
+      access_token: user.access_token,
     });
+
+    return nextResponse;
   } catch (error) {
     console.error('Register API error:', error);
     return NextResponse.json(

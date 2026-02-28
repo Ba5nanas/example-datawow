@@ -1,11 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://concert-backend:3000';
 
 export async function GET(request: NextRequest) {
   try {
+
+    const cookieStore = await cookies();
+    const jwtToken = cookieStore.get('jwt')?.value;
+    
+    if (!jwtToken) {
+      return NextResponse.json(
+        { success: false, error: 'Not authenticated' },
+        { status: 401 }
+      );
+    }
+        
     const response = await fetch(`${API_BASE_URL}/dashboard/stats`, {
       cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`,
+      },
     });
 
     if (!response.ok) {
