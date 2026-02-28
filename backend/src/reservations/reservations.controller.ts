@@ -25,8 +25,11 @@ export class ReservationsController {
   }
 
   @Get()
-  findAll() {
-    return this.reservationsService.findAll();
+  findAll(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 50,
+  ) {
+    return this.reservationsService.findAll(page, limit);
   }
 
   @Get('user/:userId')

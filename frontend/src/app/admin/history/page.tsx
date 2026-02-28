@@ -2,19 +2,38 @@
 
 import React, { useState, useEffect } from 'react';
 import { reservationApi, Reservation } from '@/lib/api';
+import { formatDateTime } from '@/lib/utils/time';
+
+// กำหนด Interface ให้ตรงกับ Backend (ถ้าใน lib/api มีแล้ว สามารถลบออกและ import มาใช้ได้เลย)
+interface PaginatedReservationResponse {
+  data: Reservation[];
+  total: number;
+  page: number;
+  limit: number;
+  lastPage: number;
+}
 
 export default function AdminHistoryPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // State สำหรับ Pagination
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 50;
 
   useEffect(() => {
-    loadReservations();
-  }, []);
+    loadReservations(page);
+  }, [page]);
 
-  const loadReservations = async () => {
+  const loadReservations = async (currentPage: number) => {
+    setLoading(true);
     try {
-      const data = await reservationApi.findAll();
-      setReservations(data);
+      // เรียก API โดยส่ง page และ limit ไปด้วย
+      const response = await reservationApi.findAll(currentPage, limit) as unknown as PaginatedReservationResponse;
+      console.log(response)
+      setReservations(response.data);
+      setTotalPages(response.lastPage || 1);
     } catch (error) {
       console.error('Failed to load reservations:', error);
     } finally {
@@ -22,26 +41,9 @@ export default function AdminHistoryPage() {
     }
   };
 
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    });
-  };
-
-  if (loading) {
-    return <div className="text-center py-8 text-gray-500">Loading reservations...</div>;
-  }
-
   return (
     <div className="bg-white p-0 rounded-sm">
-      <table className="w-full border-collapse border border-gray-300 text-left">
+      <table className="w-full border-collapse border border-gray-300 text-left mb-4">
         <thead>
           <tr className="bg-gray-50">
             <th className="border border-gray-300 p-4 font-bold text-gray-900 w-1/4">Date time</th>
@@ -51,7 +53,13 @@ export default function AdminHistoryPage() {
           </tr>
         </thead>
         <tbody>
-          {reservations.length === 0 ? (
+          {loading ? (
+            <tr>
+              <td colSpan={4} className="border border-gray-300 p-8 text-center text-gray-500">
+                Loading reservations...
+              </td>
+            </tr>
+          ) : reservations.length === 0 ? (
             <tr>
               <td colSpan={4} className="border border-gray-300 p-4 text-center text-gray-500">
                 No reservations found
@@ -85,6 +93,39 @@ export default function AdminHistoryPage() {
           )}
         </tbody>
       </table>
+
+      {/* Pagination Controls */}
+      {!loading && totalPages > 1 && (
+        <div className="flex justify-between items-center px-4 py-3 bg-white border border-gray-300 rounded-b-sm">
+          <button
+            onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+            disabled={page === 1}
+            className={`px-3 py-1 text-sm rounded-md border ${
+              page === 1
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Previous
+          </button>
+          
+          <span className="text-sm text-gray-600">
+            Page <span className="font-semibold">{page}</span> of <span className="font-semibold">{totalPages}</span>
+          </span>
+
+          <button
+            onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={page === totalPages}
+            className={`px-3 py-1 text-sm rounded-md border ${
+              page === totalPages
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

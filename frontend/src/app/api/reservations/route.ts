@@ -5,13 +5,18 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://concert-backend:
 
 export async function GET(request: NextRequest) {
   try {
-    const response = await fetch(`${API_BASE_URL}/reservations`, {
+    const { searchParams } = new URL(request.url);
+    const page = searchParams.get('page') || '1';
+    const limit = searchParams.get('limit') || '50';
+
+    const response = await fetch(`${API_BASE_URL}/reservations?page=${page}&limit=${limit}`, {
       cache: 'no-store',
     });
 
     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
       return NextResponse.json(
-        { message: 'Failed to fetch reservations' },
+        { message: errorData.message || 'Failed to fetch reservations' },
         { status: response.status }
       );
     }

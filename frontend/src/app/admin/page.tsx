@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Award, XCircle } from 'lucide-react';
 import OverviewTab from '@/app/components/OverviewTab';
 import CreateTab from '@/app/components/CreateTab';
-import { concertApi, Concert, reservationApi, Reservation } from '@/lib/api';
+import { concertApi, reservationApi, dashboardApi } from '@/lib/api';
 
 export default function AdminDashboard() {
   // State to control which tab is currently active
@@ -24,17 +24,16 @@ export default function AdminDashboard() {
   const loadStats = async () => {
     try {
       setLoadingStats(true);
-      const [concertsData, reservationsData] = await Promise.all([
-        concertApi.findAll(),
-        reservationApi.findAll(),
+      const [stats] = await Promise.all([
+        dashboardApi.getStats(),
       ]);
 
       // Calculate total seats from all concerts
-      const totalSeats = concertsData.reduce((sum, concert) => sum + concert.seat, 0);
+      const totalSeats = stats.totalSeats;
 
       // Calculate total reservations and cancellations
-      const totalReservations = reservationsData.filter(r => r.status === 'reserved').length;
-      const totalCancellations = reservationsData.filter(r => r.status === 'cancelled').length;
+      const totalReservations = stats.totalReserve;
+      const totalCancellations = stats.totalCancel;
 
       setStats({
         totalSeats,

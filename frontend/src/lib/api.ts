@@ -30,6 +30,31 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
+// Pagination Interface
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  lastPage: number;
+}
+
+export interface DashboardStats {
+  totalCancel: number;
+  totalSeats: number;
+  totalReserve: number;
+}
+
+export const dashboardApi = {
+  getStats: async (): Promise<DashboardStats> => {
+    const response = await fetch(`${API_BASE_URL}/dashboard/stats`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch stats');
+    }
+    return await response.json();
+  },
+};
+
 // User API
 export const userApi = {
   login: async (loginData: LoginUserDto): Promise<User> => {
@@ -102,8 +127,8 @@ export interface Concert {
 }
 
 export const concertApi = {
-  findAll: async (): Promise<Concert[]> => {
-    const response = await fetch(`${API_BASE_URL}/concerts`);
+  findAll: async (page: number = 1, limit: number = 10): Promise<PaginatedResponse<Concert>> => {
+    const response = await fetch(`${API_BASE_URL}/concerts?page=${page}&limit=${limit}`);
     if (!response.ok) {
       throw new Error('Failed to fetch concerts');
     }
@@ -197,8 +222,8 @@ export const reservationApi = {
     return await response.json();
   },
 
-  findAll: async (): Promise<Reservation[]> => {
-    const response = await fetch(`${API_BASE_URL}/reservations`);
+  findAll: async (page: number = 1, limit: number = 50): Promise<PaginatedResponse<Reservation>> => {
+    const response = await fetch(`${API_BASE_URL}/reservations?page=${page}&limit=${limit}`);
     if (!response.ok) {
       throw new Error('Failed to fetch reservations');
     }

@@ -19,10 +19,11 @@ export default function OverviewTab({ onStatsUpdate }: OverviewTabProps) {
 
   const loadConcerts = async () => {
     try {
-      const data = await concertApi.findAll();
-      setConcerts(data);
+      const response = await concertApi.findAll();
+      const concertsData = response.data || [];
+      setConcerts(concertsData);
     } catch (error) {
-      console.error('Failed to load concerts:', error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -35,25 +36,25 @@ export default function OverviewTab({ onStatsUpdate }: OverviewTabProps) {
       await concertApi.delete(concertToDelete.id);
       await loadConcerts();
       setConcertToDelete(null);
-      // Trigger stats update
+      
       if (onStatsUpdate) {
         onStatsUpdate();
       }
     } catch (error) {
-      console.error('Failed to delete concert:', error);
+      console.error(error);
     }
   };
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-500">Loading concerts...</div>;
+    return <div className="text-center py-8 text-gray-500">กำลังโหลดข้อมูล...</div>;
   }
 
   return (
     <div className="space-y-6 relative z-0">
       {concerts.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
-          <p className="text-lg">No concerts found</p>
-          <p className="text-sm mt-2">Create a new concert to get started</p>
+          <p className="text-lg">ไม่พบข้อมูลคอนเสิร์ต</p>
+          <p className="text-sm mt-2">สร้างคอนเสิร์ตใหม่เพื่อเริ่มต้นใช้งาน</p>
         </div>
       ) : (
         concerts.map((concert) => (
@@ -61,7 +62,7 @@ export default function OverviewTab({ onStatsUpdate }: OverviewTabProps) {
             <h3 className="text-xl font-bold text-blue-500 mb-4">{concert.name}</h3>
             <hr className="mb-4 border-gray-100" />
             <p className="text-gray-600 text-sm leading-relaxed mb-6">
-              {concert.description || 'No description provided'}
+              {concert.description || 'ไม่มีคำอธิบาย'}
             </p>
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2 text-gray-700">
@@ -79,7 +80,6 @@ export default function OverviewTab({ onStatsUpdate }: OverviewTabProps) {
         ))
       )}
 
-      {/* --- Modal --- */}
       {concertToDelete && (
         <div className="fixed inset-0 bg-black opacity-50 z-40 transition-opacity m-0"></div>
       )}
@@ -91,11 +91,11 @@ export default function OverviewTab({ onStatsUpdate }: OverviewTabProps) {
               <AlertCircle className="h-6 w-6 text-red-600" aria-hidden="true" />
             </div>
             <h3 className="text-lg leading-6 font-bold text-gray-900" id="modal-title">
-              Are you sure to delete?
+              Confirm Delete ?
             </h3>
             <div className="mt-2">
               <p className="text-sm text-gray-500">
-                You are about to delete <span className="font-bold text-gray-800">"{concertToDelete.name}"</span>. This action cannot be undone.
+                  You are about to delete <span className="font-bold text-gray-800">"{concertToDelete.name}"</span>. This action cannot be undone.
               </p>
             </div>
             <div className="mt-6 flex justify-center gap-4">
@@ -111,7 +111,7 @@ export default function OverviewTab({ onStatsUpdate }: OverviewTabProps) {
                 className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:w-auto sm:text-sm flex items-center gap-2"
                 onClick={handleDeleteConfirm}
               >
-                <Trash2 size={18} /> Yes, Delete
+                <Trash2 size={18} /> Confirm
               </button>
             </div>
           </div>

@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Body,
+  Query,
   Patch,
   Param,
   Delete,
@@ -24,8 +25,11 @@ export class ConcertsController {
   }
 
   @Get()
-  findAll() {
-    return this.concertsService.findAll();
+  findAll(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
+    return this.concertsService.findAll(page, limit);
   }
 
   @Get(':id')

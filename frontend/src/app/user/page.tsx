@@ -21,10 +21,12 @@ export default function UserHomePage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // 1. โหลดข้อมูล User ปัจจุบันเมื่อเปิดหน้าเว็บ
   useEffect(() => {
     loadCurrentUser();
   }, []);
 
+  // 2. เมื่อโหลด User เสร็จแล้ว (หรือมี currentUser) ให้โหลดข้อมูลคอนเสิร์ตและการจอง
   useEffect(() => {
     if (currentUser) {
       loadData();
@@ -39,7 +41,7 @@ export default function UserHomePage() {
       if (result.success) {
         setCurrentUser(result.user);
       } else {
-        // Not authenticated, redirect to login
+        // ถ้ายังไม่ได้ล็อกอิน ให้เด้งไปหน้า login
         window.location.href = '/login';
       }
     } catch (error) {
@@ -49,13 +51,19 @@ export default function UserHomePage() {
   };
 
   const loadData = async () => {
+    if (!currentUser) return; // กันเหนียว ต้องมี User ก่อนถึงจะโหลดได้
+
     try {
-      const [concertsData, reservationsData] = await Promise.all([
-        concertApi.findAll(),
-        reservationApi.findAll(),
+      // โหลดคอนเสิร์ต (ดึงเป็นหน้า) และการจอง (ดึงเฉพาะของ User คนนี้) พร้อมกัน
+      const [concertsResponse, userReservations] = await Promise.all([
+        concertApi.findAll(), // ค่าเริ่มต้นคือ page=1, limit=10
+        reservationApi.findByUserId(currentUser.id), 
       ]);
-      setConcerts(concertsData);
-      setReservations(reservationsData);
+      
+      // concertsResponse เป็น PaginatedResponse เลยต้องเข้าถึง .data
+      setConcerts(concertsResponse.data || []);
+      // userReservations เป็น Array ตรงๆ
+      setReservations(userReservations || []); 
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -74,14 +82,18 @@ export default function UserHomePage() {
       return;
     }
 
-    const seats = 1; // Default to 1 seat for now
+    const seats = 1; // จองทีละ 1 ที่นั่ง (ตามค่าเริ่มต้น)
 
     try {
       await reservationApi.create({
+        userId: currentUser.id, // ส่ง userId ของคนที่จองไปด้วย
         concertId,
         seats,
       });
+      
+      // โหลดข้อมูลใหม่เพื่ออัปเดตหน้าจอ
       await loadData();
+      
       Swal.fire({
         icon: 'success',
         title: 'Success',
@@ -103,8 +115,12 @@ export default function UserHomePage() {
     if (!currentUser) return;
 
     try {
-      await reservationApi.cancel(reservationId);
+      // ส่ง reservationId และ userId ไปยัง API
+      await reservationApi.cancel(reservationId, currentUser.id);
+      
+      // โหลดข้อมูลใหม่เพื่ออัปเดตหน้าจอ
       await loadData();
+      
       Swal.fire({
         icon: 'success',
         title: 'Success',
@@ -123,6 +139,7 @@ export default function UserHomePage() {
   };
 
   const getReservationForConcert = (concertId: number) => {
+    // หาว่า User คนนี้ได้ทำการจองคอนเสิร์ตนี้ไว้และสถานะยังเป็น 'reserved' อยู่หรือไม่
     return reservations.find((r) => r.concertId === concertId && r.status === 'reserved');
   };
 
@@ -140,7 +157,7 @@ export default function UserHomePage() {
       ) : (
         concerts.map((concert) => {
           const reservation = getReservationForConcert(concert.id);
-          const isReserved = !!reservation;
+          const isReserved = !!reservation; // ถ้าเจอข้อมูลแปลว่าจองแล้ว
 
           return (
             <div key={concert.id} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
@@ -156,7 +173,7 @@ export default function UserHomePage() {
                 </div>
                 {isReserved ? (
                   <button
-                    onClick={() => handleCancel(reservation!.id)}
+                    onClick={() => handleCancel(reservation.id)}
                     className="bg-[#f45c5c] hover:bg-red-600 text-white px-8 py-2.5 rounded-md transition shadow-sm font-medium text-lg"
                   >
                     Cancel

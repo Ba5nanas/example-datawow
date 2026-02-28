@@ -5,6 +5,15 @@ import { Concert } from './entities/concert.entity';
 import { CreateConcertDto } from './dto/create-concert.dto';
 import { UpdateConcertDto } from './dto/update-concert.dto';
 
+// Define interface for paginated response
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  lastPage: number;
+}
+
 @Injectable()
 export class ConcertsService {
   constructor(
@@ -17,10 +26,22 @@ export class ConcertsService {
     return this.concertsRepository.save(concert);
   }
 
-  async findAll(): Promise<Concert[]> {
-    return this.concertsRepository.find({
+  // Retrieve concerts with pagination
+  async findAll(page: number = 1, limit: number = 10): Promise<PaginatedResult<Concert>> {
+    const [data, total] = await this.concertsRepository.findAndCount({
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit, // Offset
+      take: limit,              // Limit
     });
+
+    // Return structured paginated result
+    return {
+      data,
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      lastPage: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: number): Promise<Concert> {
