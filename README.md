@@ -31,8 +31,7 @@ docker-compose up --build
 ```
 
 This will start:
-- **Backend API**: http://localhost:5001
-- **Frontend**: http://localhost:3000
+- **Frontend**: http://localhost:5001
 
 ## Environment Variables
 
@@ -67,14 +66,13 @@ NEXT_PUBLIC_API_URL=http://concert-backend-dev:5001
 ### Backend Service
 
 - **Image**: Built from `backend/Dockerfile`
-- **Port**: 5001
 - **Dependencies**: PostgreSQL database
 - **Environment Variables**: Loaded from `.env` file
 
 ### Frontend Service
 
 - **Image**: Built from `frontend/Dockerfile`
-- **Port**: 3000
+- **Port**: 5001
 - **Dependencies**: Backend API
 - **Environment Variables**: Loaded from `.env` file
 
@@ -92,7 +90,7 @@ NEXT_PUBLIC_API_URL=http://concert-backend-dev:5001
 
 Once the services are running:
 
-1. Open your browser and navigate to: http://localhost:3000
+1. Open your browser and navigate to: http://localhost:5001
 2. You will be redirected to the login page
 3. Register a new account or login with existing credentials
 4. After login, you can access:
@@ -193,11 +191,10 @@ docker-compose down -v
 
 ### Port Already in Use
 
-If you see an error about port 3000 or 5001 being in use:
+If you see an error about port 5001 being in use:
 
 1. Check what's using the port:
 ```bash
-lsof -i :3000
 lsof -i :5001
 ```
 
